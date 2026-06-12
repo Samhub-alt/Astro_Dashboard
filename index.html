@@ -356,7 +356,6 @@ body::before {
 <body>
 <div class="wrap">
 
-<!-- HEADER -->
 <div class="header">
   <div>
     <div class="brand">SAM ASTRO</div>
@@ -368,13 +367,10 @@ body::before {
   </div>
 </div>
 
-<!-- DATE BANNER -->
 <div class="date-banner" id="dateBanner">LOADING...</div>
 
-<!-- ALERT STRIP -->
 <div class="alert-strip" id="alertStrip"></div>
 
-<!-- MOON HERO -->
 <div class="moon-hero">
   <div class="moon-orb" id="moonPhaseIcon">☾</div>
   <div>
@@ -390,10 +386,8 @@ body::before {
   </div>
 </div>
 
-<!-- SCORE CARDS -->
 <div class="scores-row" id="scoresRow"></div>
 
-<!-- MAIN GRID -->
 <div class="main-grid">
   <div class="card">
     <div class="card-title">⏱ 24-Hour IST Timeline</div>
@@ -410,7 +404,6 @@ body::before {
   </div>
 </div>
 
-<!-- SECOND ROW -->
 <div class="second-row">
   <div class="card">
     <div class="card-title">🕉 Vedic Panchang</div>
@@ -429,13 +422,11 @@ body::before {
   </div>
 </div>
 
-<!-- ACTIVE ASPECTS -->
 <div class="card" style="margin-top:18px;">
   <div class="card-title">✦ Active Planetary Aspects</div>
   <div class="aspect-list" id="aspectList"></div>
 </div>
 
-<!-- MARKET SIGNAL -->
 <div class="signal-card">
   <div class="card-title">📊 Composite Market Signal</div>
   <div class="signal-row" id="signalRow"></div>
@@ -446,9 +437,7 @@ body::before {
   Calculations use approximate VSOP87-derived algorithms (±0.5° accuracy). For professional accuracy, use Swiss Ephemeris.
 </div>
 
-</div><!-- /wrap -->
-
-<script>
+</div><script>
 // ═══════════════════════════════════════════════════════
 // ASTRO ENGINE — Expanded VSOP87-approximate
 // ═══════════════════════════════════════════════════════
@@ -890,8 +879,8 @@ function processDashboard(dateStr){
   events.push({mins:9*60+15,  type:"open",  evClass:"ev-open",  html:"<strong>MARKET OPEN · 09:15 IST</strong>",    sub:"NSE/BSE Regular Session Begins", fixed:true});
   events.push({mins:15*60+30, type:"close", evClass:"ev-close", html:"<strong>MARKET CLOSE · 15:30 IST</strong>",   sub:"NSE/BSE Regular Session Ends",  fixed:true});
   events.push({mins:9*60,     type:"open",  evClass:"ev-open",  html:"Pre-Market Session Opens · 09:00",            sub:"Price discovery phase", fixed:true});
-  events.push({mins:9*60+8,   type:"open",  evClass:"ev-open",  html:"Pre-Market Closes · 09:08",                   sub:"Call auction ends", fixed:true});
-  events.push({mins:15*60+15, type:"close", evClass:"ev-close", html:"Pre-Close Session · 15:15",                   sub:"Call auction begins", fixed:true});
+  events.push({mins:9*60+8,   type:"open",  evClass:"ev-open",  html:"Pre-Market Closes · 09:08",                  sub:"Call auction ends", fixed:true});
+  events.push({mins:15*60+15, type:"close", evClass:"ev-close", html:"Pre-Close Session · 15:15",                  sub:"Call auction begins", fixed:true});
   events.push({mins:16*60+0,  type:"close", evClass:"ev-close", html:"Currency Market Close · 16:00",               sub:"USDINR and FX pairs", fixed:true});
 
   // Gann hours (every 90° of day = 6 hours)
@@ -1101,7 +1090,7 @@ function processDashboard(dateStr){
   // SIGNAL ROW
   const sigItems=[
     {lbl:"Vedic Panchang Score", pct:mSig.bullPct, trend:mSig.trend,
-     desc:`${tithiData.name} + ${NAK[nakIdx]} = ${mSig.trend==='BULLISH'?'✓ Positive':'mSig.trend==="BEARISH"?'⚠ Negative':'~ Neutral'} combination`},
+     desc:`${tithiData.name} + ${NAK[nakIdx]} = ${mSig.trend==='BULLISH' ? '✓ Positive' : (mSig.trend==='BEARISH' ? '⚠ Negative' : '~ Neutral')} combination`},
     {lbl:"Planetary Aspects", pct:aspects.filter(a=>['trine','sext'].includes(a.asp.type)).length/(aspects.length||1)*100,
      trend:aspects.filter(a=>['trine','sext'].includes(a.asp.type)).length > aspects.filter(a=>['sq','opp'].includes(a.asp.type)).length?"BULLISH":"BEARISH",
      desc:`${aspects.length} active aspects · ${aspects.filter(a=>['trine','sext'].includes(a.asp.type)).length} supportive, ${aspects.filter(a=>['sq','opp'].includes(a.asp.type)).length} stressful`},
