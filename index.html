@@ -6,7 +6,6 @@
     <title>Sam Astro | Advanced Financial Engine</title>
     <style>
         :root {
-            var(--bg-dark): #0B0E14;
             --bg-dark: #07090C;
             --card-bg: #12161E;
             --text-main: #E2E8F0;
@@ -75,6 +74,17 @@
         .summary-text { flex-grow: 1; margin-left: 20px; }
         .summary-text h2 { margin: 0; color: var(--accent-gold); font-size: 2rem; }
         .summary-text p { margin: 4px 0; color: var(--text-muted); font-size: 0.95rem; }
+        .key-events-btn {
+            background-color: rgba(139, 92, 246, 0.1);
+            border: 1px solid var(--accent-purple);
+            color: var(--accent-purple);
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            min-width: 100px;
+        }
 
         /* --- Grid Layout --- */
         .bottom-grid { display: grid; grid-template-columns: 1.1fr 1.4fr; gap: 20px; }
@@ -90,6 +100,9 @@
         .timeline li.market-open::before { border-color: var(--green-up); background: var(--green-up); }
         .timeline li.market-close::before { border-color: var(--red-down); background: var(--red-down); }
         .timeline li.important::before { border-color: var(--warning-orange); box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+        .timeline li.ingress::before { border-color: var(--accent-gold); background: var(--accent-gold); }
+        .timeline li.aspect::before { border-color: var(--accent-purple); background: var(--accent-purple); }
+        
         .time-label { font-weight: bold; color: var(--accent-gold); margin-right: 12px; font-family: monospace; }
         .sub-text { display: block; font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
 
@@ -133,6 +146,10 @@
             <p id="nakshatra-details">Loading precision data...</p>
             <p style="color: var(--text-main); font-weight: bold;" id="tithi-details">Analyzing Lunar Phase...</p>
         </div>
+        <div class="key-events-btn">
+            <span id="event-count" style="font-size: 1.2rem;">0</span> <br>
+            <span style="font-weight: normal; font-size: 0.75rem; color: var(--text-main); text-transform: uppercase;">Events</span>
+        </div>
     </div>
 
     <div class="bottom-grid">
@@ -149,7 +166,7 @@
                         <th>Planet</th>
                         <th>Degree & Sign</th>
                         <th>Nakshatra-Pada</th>
-                        <th>Status / Gann Angle</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tbody id="planetary-table"></tbody>
@@ -164,10 +181,9 @@
     const nakshatras = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"];
     const tithis = ["Pratipada", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashthi", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadashi", "Dwadashi", "Trayodashi", "Chaturdashi", "Purnima", "Pratipada", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashthi", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadashi", "Dwadashi", "Trayodashi", "Chaturdashi", "Amavasya"];
     
-    // Ganda Moola Nakshatra Indices (Highly Volatile)
     const gandaMoola = [0, 8, 9, 17, 18, 26]; 
 
-    // --- Geocentric Math Engine (Approximations) ---
+    // --- Expanded Geocentric Math Engine ---
     const AstroEngine = {
         getJD: function(date) { return (date.getTime() / 86400000) + 2440587.5; },
         norm: function(angle) { let a = angle % 360; return a < 0 ? a + 360 : a; },
@@ -187,12 +203,15 @@
             let pert = 22640 * Math.sin(M_moon * Math.PI/180) - 4586 * Math.sin((M_moon - 2*D) * Math.PI/180);
             let trueMoon = this.norm(L_moon + (pert / 3600.0));
 
-            // Inner/Outer Approx (For Pattern Recognition)
+            // Inner/Outer Approx
             let mercOffset = 22 * Math.sin((d / 115.88) * 2 * Math.PI);
             let venusOffset = 45 * Math.sin((d / 583.92) * 2 * Math.PI);
             let helioMars = this.norm(355.43 + 0.5240 * d);
             let helioJup = this.norm(34.33 + 0.0831 * d);
             let helioSat = this.norm(50.08 + 0.0334 * d);
+            let helioUra = this.norm(313.23 + 0.0117 * d);
+            let helioNep = this.norm(304.88 + 0.0060 * d);
+            let helioPlu = this.norm(238.92 + 0.0040 * d);
             let earth = this.norm(trueSun + 180);
 
             let planets = [
@@ -203,9 +222,12 @@
                 { id: "ma", name: "Mars", deg: this.norm(helioMars - ayanamsa + 20 * Math.sin((helioMars - earth) * Math.PI/180)) },
                 { id: "ju", name: "Jupiter", deg: this.norm(helioJup - ayanamsa + 10 * Math.sin((helioJup - earth) * Math.PI/180)) },
                 { id: "sa", name: "Saturn", deg: this.norm(helioSat - ayanamsa + 6 * Math.sin((helioSat - earth) * Math.PI/180)) },
-                { id: "ra", name: "Rahu", deg: this.norm(125.04 - 0.05295 * d - ayanamsa) }
+                { id: "ra", name: "Rahu", deg: this.norm(125.04 - 0.05295 * d - ayanamsa) },
+                { id: "ke", name: "Ketu", deg: this.norm((125.04 - 0.05295 * d - ayanamsa) + 180) },
+                { id: "ur", name: "Uranus", deg: this.norm(helioUra - ayanamsa) },
+                { id: "ne", name: "Neptune", deg: this.norm(helioNep - ayanamsa) },
+                { id: "pl", name: "Pluto", deg: this.norm(helioPlu - ayanamsa) }
             ];
-            planets.push({ id: "ke", name: "Ketu", deg: this.norm(planets[7].deg + 180) });
             return planets;
         }
     };
@@ -232,26 +254,16 @@
             let statusHTML = "";
             let distFromSun = AstroEngine.getAngleDist(p.deg, sunDeg);
 
-            // Check Asta (Combustion)
-            if (p.id !== 'su' && p.id !== 'mo' && p.id !== 'ra' && p.id !== 'ke') {
+            // Combust Check
+            if (p.id !== 'su' && p.id !== 'mo' && p.id !== 'ra' && p.id !== 'ke' && p.id !== 'ur' && p.id !== 'ne' && p.id !== 'pl') {
                 if (distFromSun < 8) {
-                    statusHTML += `<span class="badge-combust">Asta (Combust)</span> `;
-                    if (p.id === 'me') warnings.push("Mercury is Combust: Expect erratic trading volume and false technical breakouts.");
+                    statusHTML += `<span class="badge-combust">Combust</span> `;
+                    if (p.id === 'me') warnings.push("Mercury is Combust: Erratic trading volume.");
+                }
+                if (p.id === 'ju' || p.id === 'sa' || p.id === 'ma') {
+                    if (distFromSun > 120 && distFromSun < 240) statusHTML += `<span class="badge-rx">Retrograde</span> `;
                 }
             }
-
-            // Check Retrograde (Simplified Logical Proxy)
-            if (p.id === 'ju' || p.id === 'sa' || p.id === 'ma') {
-                if (distFromSun > 120 && distFromSun < 240) statusHTML += `<span class="badge-rx">Retrograde</span> `;
-            }
-
-            // Check Gann Angles to Sun (Macro Trends)
-            const gannAngles = [90, 120, 144, 180];
-            gannAngles.forEach(angle => {
-                if (Math.abs(distFromSun - angle) < 2) {
-                    statusHTML += `<br><span class="badge-gann">Sun ${angle}° Aspect</span>`;
-                }
-            });
 
             tableHTML += `<tr>
                 <td>${p.name}</td>
@@ -270,47 +282,53 @@
         document.getElementById('live-nakshatra').innerText = currentNak;
         document.getElementById('nakshatra-details').innerText = `Active at Open · Pada ${currentPada}`;
 
-        // Tithi & Eclipse Check
         let tithiDiff = AstroEngine.norm(moonDeg - sunDeg);
         let tithiIndex = Math.floor(tithiDiff / 12);
-        let paksha = tithiIndex < 15 ? "Shukla" : "Krishna";
         let tithiName = tithis[tithiIndex];
-        document.getElementById('tithi-details').innerText = `${paksha} ${tithiName} Tithi`;
+        document.getElementById('tithi-details').innerText = `${tithiIndex < 15 ? "Shukla" : "Krishna"} ${tithiName} Tithi`;
 
         // --- 3. Chetavani (Warning) Engine ---
-        if (gandaMoola.includes(nakIndex)) {
-            warnings.push(`Moon is in Ganda Moola (${currentNak}): Market sentiment is highly unstable. Strict stop-losses required today.`);
-        }
-        if (tithiIndex === 14 || tithiIndex === 29) {
-            let rahuDist = AstroEngine.getAngleDist(moonDeg, openPlanets[7].deg);
-            if (rahuDist < 15) warnings.push("GRAHAN (Eclipse) Proximity: Absolute macro pivot point. Do not carry heavy unhedged overnight positions.");
-            else warnings.push(`${tithiName}: Extreme emotional extremes in retail trading expected today.`);
-        }
+        if (gandaMoola.includes(nakIndex)) warnings.push(`Moon in Ganda Moola (${currentNak}): Market sentiment highly unstable.`);
+        if (tithiIndex === 14 || tithiIndex === 29) warnings.push(`${tithiName} (Syzygy): Major behavioral extremes in retail trading today.`);
         
         let chetavaniBox = document.getElementById('chetavani-text');
-        if (warnings.length > 0) {
-            chetavaniBox.innerHTML = `<ul><li>${warnings.join('</li><li>')}</li></ul>`;
-        } else {
-            chetavaniBox.innerText = "No extreme astrological friction detected. Trade standard price action and key technical levels.";
-        }
+        if (warnings.length > 0) chetavaniBox.innerHTML = `<ul><li>${warnings.join('</li><li>')}</li></ul>`;
+        else chetavaniBox.innerText = "No extreme astrological friction detected. Trade standard price action.";
 
-        // --- 4. Green Area (Timeline Engine) ---
+        // --- 4. Green Area (Expanded Timeline Engine) ---
         let generatedEvents = [];
-        let pOpen = Math.floor(moonDeg / 3.333333);
         let closeMoonDeg = closePlanets[1].deg;
         if (moonDeg > closeMoonDeg) closeMoonDeg += 360; 
 
-        // Important Time: Pada Shifts
-        if (pOpen !== Math.floor(closeMoonDeg / 3.333333)) {
-            let fraction = ((Math.floor(closeMoonDeg / 3.333333) * 3.333333) - moonDeg) / (closeMoonDeg - moonDeg);
-            generatedEvents.push({
-                mins: Math.floor(fraction * 375),
-                html: `<li class="important"><span class="time-label">{TIME}</span> <strong>PADA SHIFT (Micro-Pivot)</strong><span class="sub-text">Intraday trend may pause or reverse. Watch support/resistance.</span></li>`
-            });
+        // Event A: Pada Shifts
+        let pOpen = Math.floor(moonDeg / 3.333333);
+        let pClose = Math.floor(closeMoonDeg / 3.333333);
+        if (pOpen !== pClose) {
+            let fraction = ((pClose * 3.333333) - moonDeg) / (closeMoonDeg - moonDeg);
+            generatedEvents.push({ mins: Math.floor(fraction * 375), html: `<li class="important"><span class="time-label">{TIME}</span> <strong>PADA SHIFT (Micro-Pivot)</strong><span class="sub-text">Intraday trend may pause/reverse.</span></li>` });
         }
 
-        // Gann Intraday Moon Aspects
-        const targetAngles = [0, 90, 120, 180];
+        // Event B: Nakshatra Shifts
+        let nOpen = Math.floor(moonDeg / 13.333333);
+        let nClose = Math.floor(closeMoonDeg / 13.333333);
+        if (nOpen !== nClose) {
+            let fraction = ((nClose * 13.333333) - moonDeg) / (closeMoonDeg - moonDeg);
+            generatedEvents.push({ mins: Math.floor(fraction * 375), html: `<li class="ingress"><span class="time-label">{TIME}</span> Moon enters <strong>${nakshatras[nClose]}</strong> Nakshatra</li>` });
+        }
+
+        // Event C: Zodiac Ingress (Planets changing signs)
+        openPlanets.forEach((p, i) => {
+            let sOpen = Math.floor(p.deg / 30);
+            let sClose = Math.floor(closePlanets[i].deg / 30);
+            if (sOpen !== sClose && (p.deg < closePlanets[i].deg ? closePlanets[i].deg - p.deg < 10 : p.deg - closePlanets[i].deg > 350)) {
+                let fraction = ((sClose * 30) - p.deg) / (closePlanets[i].deg - p.deg);
+                if (fraction < 0) fraction += 1;
+                generatedEvents.push({ mins: Math.floor(fraction * 375), html: `<li class="ingress"><span class="time-label">{TIME}</span> ${p.name} enters <strong>${zodiac[sClose]}</strong><span class="sub-text">Sankranti / Sign Change. Major sector rotation.</span></li>` });
+            }
+        });
+
+        // Event D: Deep Moon Aspects (0, 45, 90, 120, 135, 180)
+        const targetAngles = [0, 45, 90, 120, 135, 180];
         for(let i=2; i<openPlanets.length; i++) {
             let pName = openPlanets[i].name;
             let d1 = AstroEngine.getAngleDist(moonDeg, openPlanets[i].deg);
@@ -319,25 +337,22 @@
             targetAngles.forEach(angle => {
                 if ((d1 < angle && d2 > angle) || (d1 > angle && d2 < angle)) {
                     let fraction = Math.abs(angle - d1) / Math.abs(d2 - d1);
-                    let effect = (angle === 90 || angle === 180 || pName === 'Rahu' || pName === 'Mars') ? "Spike in volatility / Sudden shift" : "Trend continuation";
-                    generatedEvents.push({
-                        mins: Math.floor(fraction * 375),
-                        html: `<li><span class="time-label">{TIME}</span> Moon <strong>${angle}°</strong> to ${pName}<span class="sub-text">Gann Geometric Angle hit. ${effect}.</span></li>`
-                    });
+                    generatedEvents.push({ mins: Math.floor(fraction * 375), html: `<li class="aspect"><span class="time-label">{TIME}</span> Moon <strong>${angle}°</strong> ${pName}<span class="sub-text">Exact Aspect Formed.</span></li>` });
                 }
             });
         }
 
         generatedEvents.sort((a, b) => a.mins - b.mins);
+        document.getElementById('event-count').innerText = generatedEvents.length;
+
         let timelineHTML = `<li class="market-open"><span class="time-label">09:15</span> <strong>MARKET OPEN</strong></li>`;
-        
         generatedEvents.forEach(evt => {
             let h = Math.floor((9*60 + 15 + evt.mins) / 60);
             let m = (9*60 + 15 + evt.mins) % 60;
             timelineHTML += evt.html.replace('{TIME}', `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
         });
-
         timelineHTML += `<li class="market-close"><span class="time-label">15:30</span> <strong>MARKET CLOSE</strong></li>`;
+        
         document.getElementById('timeline-list').innerHTML = timelineHTML;
     }
 
