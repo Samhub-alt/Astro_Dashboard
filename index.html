@@ -109,7 +109,7 @@
             align-items: center;
             justify-content: center;
             color: var(--accent-purple);
-            font-size: 2rem;
+            font-size: 2.2rem;
             border: 2px solid var(--border-color);
         }
 
@@ -210,7 +210,6 @@
         td:nth-child(2) { color: var(--text-main); font-family: monospace; font-size: 1.05rem; text-align: left; }
         td:last-child { text-align: right; color: var(--accent-purple); font-weight: 500;}
 
-        /* Mobile Responsiveness */
         @media (max-width: 768px) {
             .bottom-grid { grid-template-columns: 1fr; }
             .top-summary { flex-direction: column; text-align: center; gap: 20px; }
@@ -222,154 +221,212 @@
 
 <div class="dashboard-container">
     
-    <!-- Header with Sam Astro Brand and Calendar -->
     <div class="header-controls">
         <div class="brand">Sam - Astro</div>
         <input type="date" id="calendar-picker" class="date-picker">
     </div>
 
-    <!-- Top Summary Card -->
     <div class="card top-summary">
         <div class="moon-icon">☾</div>
         <div class="summary-text">
             <p style="text-transform: uppercase; font-size: 0.8rem; font-weight: bold; color: var(--accent-purple); letter-spacing: 1px;">Moon Nakshatra Outlook</p>
-            <h2 id="live-nakshatra">Loading...</h2>
-            <p id="nakshatra-details">Calculating transition times...</p>
-            <p style="color: var(--text-main);" id="tithi-details">Analyzing Lunar Phase</p>
+            <h2 id="live-nakshatra">Calculating...</h2>
+            <p id="nakshatra-details">Loading precision data...</p>
+            <p style="color: var(--text-main); font-weight: bold;" id="tithi-details">Analyzing Lunar Phase...</p>
         </div>
         <div class="key-events-btn">
             <span id="event-count">0</span> KEY EVENTS<br><span style="font-weight: normal; font-size: 0.8rem; color: var(--text-main);">Scheduled</span>
         </div>
     </div>
 
-    <!-- Bottom Grid Layout -->
     <div class="bottom-grid">
         
-        <!-- Left Column: Timeline (Green Area) -->
         <div class="card">
             <div class="card-header">IST Market Timeline</div>
             <ul class="timeline" id="timeline-list">
-                <!-- Javascript will auto-generate timeline events here based on calendar date -->
-            </ul>
+                </ul>
         </div>
 
-        <!-- Right Column: Planetary Snapshot (Blue Area) -->
         <div class="card">
             <div class="card-header">Planetary Snapshot</div>
             <table>
                 <tbody id="planetary-table">
-                    <!-- Javascript will auto-generate planets here based on calendar date -->
-                </tbody>
+                    </tbody>
             </table>
         </div>
 
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- FINANCIAL ASTROLOGY JAVASCRIPT ENGINE      -->
-<!-- ========================================== -->
 <script>
-    // --- Data Arrays ---
-    const planets = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Rahu", "Ketu"];
-    const zodiacs = ["Ari", "Tau", "Gem", "Can", "Leo", "Vir", "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis"];
+    // --- Astrological Constants ---
+    const zodiac = ["Ari", "Tau", "Gem", "Can", "Leo", "Vir", "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis"];
     const nakshatras = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"];
+    const tithis = ["Pratipada", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashthi", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadashi", "Dwadashi", "Trayodashi", "Chaturdashi", "Purnima", "Pratipada", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashthi", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadashi", "Dwadashi", "Trayodashi", "Chaturdashi", "Amavasya"];
 
-    // --- Core Architecture Setup ---
+    // --- Core Mathematical Engine ---
+    const AstroEngine = {
+        getJD: function(date) {
+            return (date.getTime() / 86400000) + 2440587.5;
+        },
+        norm: function(angle) {
+            let a = angle % 360;
+            return a < 0 ? a + 360 : a;
+        },
+        getSunMoon: function(jd) {
+            let T = (jd - 2451545.0) / 36525.0; // Centuries from J2000
+            
+            // Lahiri Ayanamsa Approximation
+            let ayanamsa = 24.2884 + (1.396 * T);
+            
+            // True Sun Longitude
+            let M_sun = this.norm(357.52911 + 35999.05029 * T);
+            let L_sun = this.norm(280.46646 + 36000.76983 * T);
+            let C_sun = (1.9146 - 0.0048 * T) * Math.sin(M_sun * Math.PI/180) + 0.02 * Math.sin(2 * M_sun * Math.PI/180);
+            let trueSun = this.norm(L_sun + C_sun);
+
+            // True Moon Longitude (with Major Perturbations for high accuracy)
+            let L_moon = this.norm(218.316 + 481267.881 * T);
+            let M_moon = this.norm(134.963 + 477198.867 * T);
+            let D = this.norm(297.850 + 445267.111 * T);
+            
+            let pert = 22640 * Math.sin(M_moon * Math.PI/180) 
+                     - 4586 * Math.sin((M_moon - 2*D) * Math.PI/180)
+                     + 2370 * Math.sin(2*D * Math.PI/180)
+                     + 769 * Math.sin(2*M_moon * Math.PI/180)
+                     - 668 * Math.sin(M_sun * Math.PI/180);
+                     
+            let trueMoon = this.norm(L_moon + (pert / 3600.0));
+            
+            return {
+                sun: this.norm(trueSun - ayanamsa),
+                moon: this.norm(trueMoon - ayanamsa),
+                ayanamsa: ayanamsa
+            };
+        },
+        getAllPlanets: function(date) {
+            let jd = this.getJD(date);
+            let sm = this.getSunMoon(jd);
+            let d = jd - 2451545.0;
+            
+            // Synodic bounds to keep Mercury and Venus realistically near the Sun
+            let mercOffset = 22 * Math.sin((d / 115.88) * 2 * Math.PI);
+            let venusOffset = 45 * Math.sin((d / 583.92) * 2 * Math.PI);
+            
+            // Outer planet Geocentric approximations
+            let helioMars = this.norm(355.43 + 0.5240 * d);
+            let helioJup = this.norm(34.33 + 0.0831 * d);
+            let helioSat = this.norm(50.08 + 0.0334 * d);
+            let earth = this.norm(sm.sun + sm.ayanamsa + 180);
+            
+            let planets = [
+                { name: "Sun", deg: sm.sun },
+                { name: "Moon", deg: sm.moon },
+                { name: "Mercury", deg: this.norm(sm.sun + mercOffset) },
+                { name: "Venus", deg: this.norm(sm.sun + venusOffset) },
+                { name: "Mars", deg: this.norm(helioMars - sm.ayanamsa + 20 * Math.sin((helioMars - earth) * Math.PI/180)) },
+                { name: "Jupiter", deg: this.norm(helioJup - sm.ayanamsa + 10 * Math.sin((helioJup - earth) * Math.PI/180)) },
+                { name: "Saturn", deg: this.norm(helioSat - sm.ayanamsa + 6 * Math.sin((helioSat - earth) * Math.PI/180)) },
+                { name: "Rahu", deg: this.norm(125.04 - 0.05295 * d - sm.ayanamsa) }
+            ];
+            
+            planets.push({ name: "Ketu", deg: this.norm(planets[7].deg + 180) });
+            return planets;
+        }
+    };
+
+    // --- Formatting Utilities ---
+    function formatDegree(deg) {
+        let sign = Math.floor(deg / 30);
+        let rem = (deg % 30).toFixed(1);
+        return `${rem}° ${zodiac[sign]}`;
+    }
+
+    function getNakshatra(deg) {
+        let nakIndex = Math.floor(deg / 13.333333);
+        let pada = Math.floor((deg / 3.333333) % 4) + 1;
+        return { name: nakshatras[nakIndex], pada: pada, formatted: `${nakshatras[nakIndex]}-${pada}` };
+    }
+
+    // --- Main Rendering Function ---
+    function updateDashboard(selectedDateStr) {
+        // Calculate data for Market Open (09:15) and Market Close (15:30)
+        let openDate = new Date(selectedDateStr + "T09:15:00+05:30");
+        let closeDate = new Date(selectedDateStr + "T15:30:00+05:30");
+
+        let openPlanets = AstroEngine.getAllPlanets(openDate);
+        let closePlanets = AstroEngine.getAllPlanets(closeDate);
+
+        let moonOpen = openPlanets.find(p => p.name === "Moon").deg;
+        let moonClose = closePlanets.find(p => p.name === "Moon").deg;
+        let sunOpen = openPlanets.find(p => p.name === "Sun").deg;
+
+        // 1. POPULATE BLUE AREA (Planetary Table)
+        let tableHTML = '';
+        openPlanets.forEach(p => {
+            tableHTML += `<tr><td>${p.name}</td><td>${formatDegree(p.deg)}</td><td>${getNakshatra(p.deg).formatted}</td></tr>`;
+        });
+        document.getElementById('planetary-table').innerHTML = tableHTML;
+
+        // 2. POPULATE TOP SUMMARY
+        let currentNak = getNakshatra(moonOpen);
+        document.getElementById('live-nakshatra').innerText = currentNak.name;
+        document.getElementById('nakshatra-details').innerText = `Active at Open · Pada ${currentNak.pada}`;
+
+        // Calculate Tithi
+        let tithiDiff = AstroEngine.norm(moonOpen - sunOpen);
+        let tithiIndex = Math.floor(tithiDiff / 12);
+        let paksha = tithiIndex < 15 ? "Shukla" : "Krishna";
+        document.getElementById('tithi-details').innerText = `${paksha} ${tithis[tithiIndex]} Tithi`;
+
+        // 3. POPULATE GREEN AREA (Timeline Logic)
+        let timelineHTML = `<li class="market-open"><span class="time-label">09:15</span> <span class="event-green">MARKET OPEN</span></li>`;
+        let eventCount = 2; // Open and Close
+
+        // Logic: Check for exact Amavasya / Purnima Conjunction
+        if (tithiIndex === 14 || tithiIndex === 29) {
+            let phase = tithiIndex === 14 ? "Purnima (Full Moon)" : "Amavasya (New Moon)";
+            timelineHTML += `<li><span class="time-label">All Day</span> Sun-Moon Conjunction — ${phase}</li>`;
+            eventCount++;
+        }
+
+        // Logic: Intraday Pada Shift Calculation
+        // If the Moon crosses a 3.333° boundary during market hours, calculate the exact minute
+        let pOpen = Math.floor(moonOpen / 3.333333);
+        let pClose = Math.floor(moonClose / 3.333333);
+        if (moonClose < moonOpen) moonClose += 360; // Handle 360 wrap-around
+
+        if (pOpen !== pClose) {
+            let boundary = pClose * 3.333333; 
+            let fraction = (boundary - moonOpen) / (moonClose - moonOpen);
+            let shiftMins = Math.floor(fraction * 375); // 375 = Total Market Mins
+            
+            let eventHour = Math.floor((9 * 60 + 15 + shiftMins) / 60);
+            let eventMin = (9 * 60 + 15 + shiftMins) % 60;
+            let timeStr = `${String(eventHour).padStart(2,'0')}:${String(eventMin).padStart(2,'0')}`;
+            
+            timelineHTML += `<li class="important"><span class="time-label">${timeStr}</span> <strong>IMPORTANT TIME · PADA SHIFT</strong><span class="sub-text">Watch price action as Moon enters Pada ${pClose%4 + 1}</span></li>`;
+            eventCount++;
+        }
+
+        timelineHTML += `<li class="market-close"><span class="time-label">15:30</span> <span class="event-red">MARKET CLOSE</span></li>`;
+        
+        document.getElementById('timeline-list').innerHTML = timelineHTML;
+        document.getElementById('event-count').innerText = eventCount;
+    }
+
+    // --- Initialization ---
     const datePicker = document.getElementById('calendar-picker');
-    
-    // Set Calendar to Today initially
     const today = new Date().toISOString().split('T')[0];
     datePicker.value = today;
 
-    // Listen for Date Changes from the user
+    // Trigger calculation when user picks a date
     datePicker.addEventListener('change', function() {
-        processDashboardUpdate(this.value);
+        updateDashboard(this.value);
     });
 
-    // --- Main Processing Function ---
-    async function processDashboardUpdate(selectedDate) {
-        /*
-        ======================================================================
-        API INTEGRATION ZONE (VEDASTRO API)
-        When you are ready for real data, uncomment the fetch request below.
-        The free API allows 15 requests per minute without a key.
-        ======================================================================
-        */
-        try {
-            // const response = await fetch(`https://api.vedastro.org/api/Calculate/AllPlanetData/Location/Kalyan/Time/09:15/${selectedDate}/+05:30`);
-            // const apiData = await response.json();
-            // renderRealData(apiData); 
-            
-            // For now, we route to our internal algorithmic generator so the 
-            // dashboard works perfectly and visually out of the box.
-            const generatedData = algorithmicAstroGenerator(selectedDate);
-            renderDashboard(generatedData);
-
-        } catch (error) {
-            console.error("Data processing failed:", error);
-        }
-    }
-
-    // --- Internal Algorithm Generator (Ensures 100% Uptime for Prototyping) ---
-    // This creates consistent, realistic data based purely on the date you select.
-    function algorithmicAstroGenerator(dateString) {
-        const dateSeed = new Date(dateString).getTime() / 100000;
-        
-        // Helper function for consistent pseudo-random math based on date
-        const prng = (offset) => {
-            let x = Math.sin(dateSeed + offset) * 10000;
-            return x - Math.floor(x);
-        };
-
-        // 1. Generate Planet Degrees (Blue Area)
-        let planetData = [];
-        planets.forEach((planet, index) => {
-            let deg = (prng(index) * 30).toFixed(1);
-            let sign = zodiacs[Math.floor(prng(index + 10) * 12)];
-            let nak = nakshatras[Math.floor(prng(index + 20) * 27)];
-            let pada = Math.floor(prng(index + 30) * 4) + 1;
-            let retro = (planet === "Rahu" || planet === "Ketu" || prng(index + 40) > 0.8) ? " R" : "";
-            
-            planetData.push({ name: planet, degree: `${deg}° ${sign}${retro}`, nakshatra: `${nak}-${pada}` });
-        });
-
-        // 2. Generate Moon/Summary Data
-        const moonNak = planetData[1].nakshatra.split('-')[0];
-        const nextNak = nakshatras[(nakshatras.indexOf(moonNak) + 1) % 27];
-
-        // 3. Generate Timeline Events (Green Area)
-        let timeline = [
-            `<li class="market-open"><span class="time-label">09:15</span> <strong style="color: var(--green-up)">MARKET OPEN</strong></li>`,
-            `<li class="important"><span class="time-label">10:${Math.floor(prng(100)*40)+10}</span> <strong>IMPORTANT PADA SHIFT</strong><span class="sub-text">Watch price action at support/resistance levels</span></li>`,
-            `<li><span class="time-label">12:${Math.floor(prng(200)*50)+10}</span> Moon transitions to ${nextNak} Nakshatra</li>`,
-            `<li><span class="time-label">14:${Math.floor(prng(300)*50)+10}</span> ${planets[Math.floor(prng(400)*5)+2]} ${Math.floor(prng(500)*180)}° ${planets[Math.floor(prng(600)*5)+2]} (exact aspect)</li>`,
-            `<li class="market-close"><span class="time-label">15:30</span> <strong style="color: var(--red-down)">MARKET CLOSE</strong></li>`
-        ];
-
-        return { planetData, moonNak, nextNak, timeline };
-    }
-
-    // --- Render Engine (Pushes data to HTML) ---
-    function renderDashboard(data) {
-        // Update Summary
-        document.getElementById('live-nakshatra').innerText = data.moonNak;
-        document.getElementById('nakshatra-details').innerText = `Active through morning · shifts to ${data.nextNak} intraday`;
-        document.getElementById('event-count').innerText = data.timeline.length - 2; // Exclude open/close
-
-        // Update Timeline (Green Area)
-        document.getElementById('timeline-list').innerHTML = data.timeline.join('');
-
-        // Update Planetary Snapshot (Blue Area)
-        let tableRows = '';
-        data.planetData.forEach(p => {
-            tableRows += `<tr><td>${p.name}</td><td>${p.degree}</td><td>${p.nakshatra}</td></tr>`;
-        });
-        document.getElementById('planetary-table').innerHTML = tableRows;
-    }
-
-    // Run immediately on load for today's date
-    processDashboardUpdate(today);
+    // Run immediately for today
+    updateDashboard(today);
 
 </script>
 
