@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Daily Astro Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #f1eee7;
+            --purple-main: #68419f;
+            --gold-main: #dfb15b;
+            --text-dark: #333;
+            --text-light: #666;
+            --card-border: #dcd7cb;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .dashboard-container {
+            max-width: 900px;
+            width: 100%;
+        }
+
+        /* --- Header Section --- */
+        .date-banner {
+            background-color: var(--purple-main);
+            color: white;
+            text-align: center;
+            border-radius: 30px;
+            padding: 12px 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .sub-header {
+            text-align: center;
+            color: #8c734b;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        /* --- Global Card Styles --- */
+        .card {
+            background: white;
+            border: 2px solid var(--card-border);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            background: linear-gradient(to right, #eed08c, #dfb15b);
+            color: #5c4722;
+            text-align: center;
+            font-weight: bold;
+            padding: 8px;
+            border-radius: 20px;
+            margin: -35px auto 15px auto;
+            width: 70%;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* --- Top Summary Card --- */
+        .top-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .moon-icon {
+            width: 80px;
+            height: 80px;
+            background-color: #1a1b26;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            border: 4px solid var(--gold-main);
+        }
+
+        .summary-text h2 {
+            margin: 0 0 5px 0;
+            color: #8a6332;
+            font-size: 1.8rem;
+        }
+
+        .summary-text p {
+            margin: 2px 0;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .key-events-btn {
+            background-color: var(--purple-main);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        /* --- Grid Layout for Bottom Section --- */
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* --- Timeline Styles --- */
+        .timeline {
+            list-style: none;
+            padding: 0 0 0 10px;
+            margin: 0;
+            border-left: 2px solid var(--card-border);
+        }
+
+        .timeline li {
+            position: relative;
+            padding-left: 25px;
+            padding-bottom: 30px;
+        }
+
+        .timeline li:last-child {
+            padding-bottom: 0;
+            border-left: none;
+        }
+
+        .timeline li::before {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid #b5b0a3;
+        }
+
+        .timeline li.market-open::before { border-color: #388e3c; }
+        .timeline li.market-close::before { border-color: #d32f2f; }
+        .timeline li.important::before { border-color: var(--gold-main); background: var(--gold-main); }
+
+        .time-label {
+            font-weight: bold;
+            color: #8a6332;
+            margin-right: 10px;
+        }
+
+        .event-green { color: #388e3c; font-weight: bold; }
+        .event-red { color: #d32f2f; font-weight: bold; }
+        
+        .sub-text {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-top: 4px;
+        }
+
+        /* --- Table Styles --- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        td {
+            padding: 8px 4px;
+            font-size: 0.9rem;
+            border-bottom: 1px dashed var(--card-border);
+        }
+
+        td:first-child { color: var(--text-light); font-weight: bold; }
+        td:nth-child(2) { color: #8a6332; font-weight: bold; }
+
+        .table-footer {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: var(--text-light);
+            line-height: 1.4;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .bottom-grid { grid-template-columns: 1fr; }
+            .top-summary { flex-direction: column; text-align: center; gap: 15px; }
+            .summary-text h2 { margin-top: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+    
+    <!-- Header -->
+    <div class="date-banner" id="live-date">LOADING DATE...</div>
+    <div class="sub-header">|| JAI KEDAR || www.sbkri.com</div>
+
+    <!-- Top Summary Card -->
+    <div class="card top-summary">
+        <div class="moon-icon">☾</div>
+        <div class="summary-text">
+            <p style="text-transform: uppercase; font-size: 0.8rem; font-weight: bold; color: var(--text-light);">Moon Nakshatra Today</p>
+            <h2 id="live-nakshatra">Mrigashira</h2>
+            <p id="nakshatra-details">till 19:20 IST · then Ardra · pada 3 at open</p>
+            <p>Shukla Pratipada (Amavasya ends pre-open)</p>
+            <p style="font-size: 0.8rem;">Moon 0.3° Mithuna · Sun 29.9° Vrishabha</p>
+        </div>
+        <div class="key-events-btn">
+            4 KEY EVENTS<br><span style="font-weight: normal; font-size: 0.8rem;">today</span>
+        </div>
+    </div>
+
+    <!-- Bottom Grid Layout -->
+    <div class="bottom-grid">
+        
+        <!-- Left Column: Timeline -->
+        <div class="card">
+            <div class="card-header">THE DAY · IST TIMELINE</div>
+            <ul class="timeline">
+                <li><span class="time-label">05:51</span> Mercury 135° Rahu (exact)</li>
+                <li><span class="time-label">08:00</span> Sun-Moon conjunction — Amavasya / New Moon (pre-open)</li>
+                <li class="market-open"><span class="time-label">09:15</span> <span class="event-green">MARKET OPEN</span></li>
+                <li class="important">
+                    <span class="time-label">10:25</span> <strong>IMPORTANT TIME · 10:25 AM</strong>
+                    <span class="sub-text">watch price action at your levels</span>
+                </li>
+                <li><span class="time-label">12:31</span> Sun enters Mithuna — Mithun Sankranti</li>
+                <li class="market-close"><span class="time-label">15:30</span> <span class="event-red">MARKET CLOSE</span></li>
+                <li><span class="time-label">19:20</span> Moon enters Ardra nakshatra</li>
+            </ul>
+        </div>
+
+        <!-- Right Column: Planetary Snapshot -->
+        <div class="card">
+            <div class="card-header">PLANETARY SNAPSHOT</div>
+            <p style="font-size: 0.8rem; color: var(--text-light); margin-top: 0;" id="live-time-snapshot">Mon 15 Jun · 09:15 IST</p>
+            <table>
+                <!-- Notice the IDs added here so JavaScript can target them directly -->
+                <tr><td>Sun</td><td id="sun-deg">29.9° Tau</td><td id="sun-nak">Mrigashira-2</td></tr>
+                <tr><td>Moon</td><td id="moon-deg">0.3° Gem</td><td id="moon-nak">Mrigashira-3</td></tr>
+                <tr><td>Mercury</td><td id="mercury-deg">24.3° Gem</td><td id="mercury-nak">Punarvasu-2</td></tr>
+                <tr><td>Venus</td><td id="venus-deg">7.8° Can</td><td id="venus-nak">Pushya-2</td></tr>
+                <tr><td>Mars</td><td id="mars-deg">25.9° Ari</td><td id="mars-nak">Bharani-4</td></tr>
+                <tr><td>Jupiter</td><td id="jupiter-deg">2.6° Can</td><td id="jupiter-nak">Punarvasu-4</td></tr>
+                <tr><td>Saturn</td><td id="saturn-deg">19.1° Pis</td><td id="saturn-nak">Revati-1</td></tr>
+                <tr><td>Rahu</td><td id="rahu-deg">9.2° Aqu R</td><td id="rahu-nak">Shatabh.-1</td></tr>
+                <tr><td>Ketu</td><td id="ketu-deg">9.2° Leo R</td><td id="ketu-nak">Magha-3</td></tr>
+            </table>
+            <div class="table-footer">
+                Amavasya, Mithun Sankranti aur naya Moon nakshatra — ek hi din mein. Trade with discipline.
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- JAVASCRIPT ENGINE (NO BACKEND REQUIRED)    -->
+<!-- ========================================== -->
+<script>
+    // 1. Function to automatically set today's live date in IST
+    function setLiveDate() {
+        const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' };
+        const today = new Date().toLocaleDateString('en-IN', options).toUpperCase();
+        
+        // This replaces "MONDAY • 15 JUNE 2026" with today's actual date
+        document.getElementById('live-date').innerText = today.replace(/,/g, ' •');
+        
+        // Sets the small snapshot time
+        const timeOptions = { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' };
+        const shortDate = new Date().toLocaleDateString('en-IN', timeOptions);
+        document.getElementById('live-time-snapshot').innerText = `${shortDate} · Live IST`;
+    }
+
+    // 2. Function to fetch Astrological data from a free API
+    async function fetchLiveAstrologyData() {
+        try {
+            // NOTE: This is where you plug in the free API endpoint (e.g., VedAstro API)
+            // Example: const response = await fetch('https://api.vedastro.org/api/...');
+            // const data = await response.json();
+            
+            // Once you have the API connected, you map the data to the HTML like this:
+            // document.getElementById('sun-deg').innerText = data.sun.degree;
+            // document.getElementById('moon-deg').innerText = data.moon.degree;
+            // document.getElementById('live-nakshatra').innerText = data.moon.nakshatra;
+
+            console.log("Dashboard loaded and ready for API connection!");
+            
+        } catch (error) {
+            console.error("Error fetching astrology data:", error);
+        }
+    }
+
+    // 3. Run these functions immediately when the page loads
+    setLiveDate();
+    fetchLiveAstrologyData();
+
+    // 4. Automatically refresh the data every 5 minutes (300,000 milliseconds)
+    setInterval(fetchLiveAstrologyData, 300000);
+</script>
+
+</body>
+</html>
