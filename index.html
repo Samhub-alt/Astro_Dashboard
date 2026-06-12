@@ -94,15 +94,14 @@
         
         .timeline li.market-open::before { border-color: var(--green-up); background: var(--green-up); box-shadow: 0 0 8px rgba(16,185,129,0.4); }
         .timeline li.market-close::before { border-color: var(--red-down); background: var(--red-down); box-shadow: 0 0 8px rgba(239,68,68,0.4); }
-        .timeline li.important::before { border-color: var(--warning-orange); box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+        .timeline li.important::before { border-color: var(--warning-orange); box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); background: var(--warning-orange); }
         .timeline li.ingress::before { border-color: var(--accent-gold); background: var(--accent-gold); }
-        .timeline li.aspect::before { border-color: var(--accent-purple); }
+        .timeline li.aspect::before { border-color: var(--text-main); }
         
-        /* Dim events outside of trading hours to match the mockup feel */
-        .timeline li.pre-market, .timeline li.post-market { opacity: 0.7; }
+        .timeline li.pre-market, .timeline li.post-market { opacity: 0.6; }
         
-        .time-label { font-weight: bold; color: var(--accent-gold); margin-right: 12px; font-family: monospace; }
-        .sub-text { display: block; font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+        .time-label { font-weight: bold; color: var(--accent-gold); margin-right: 12px; font-family: monospace; font-size: 1.05rem; }
+        .sub-text { display: block; font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
 
         /* --- Table (Blue Area) --- */
         table { width: 100%; border-collapse: collapse; margin-top: 5px; }
@@ -251,11 +250,15 @@
 
         // --- 2. Top Summary ---
         let nakIndex = Math.floor(moonDeg / 13.333333);
+        let activePada = Math.floor((moonDeg / 3.333333) % 4) + 1;
         document.getElementById('live-nakshatra').innerText = nakshatras[nakIndex];
-        document.getElementById('nakshatra-details').innerText = `Active at Open · Pada ${Math.floor((moonDeg / 3.333333) % 4) + 1}`;
+        document.getElementById('nakshatra-details').innerText = `Active at Open · Pada ${activePada}`;
+        
         let tithiDiff = AstroEngine.norm(moonDeg - sunDeg);
         let tithiIndex = Math.floor(tithiDiff / 12);
-        document.getElementById('tithi-details').innerText = `${tithiIndex < 15 ? "Shukla" : "Krishna"} ${tithis[tithiIndex]} Tithi`;
+        let isAmavasya = (tithiIndex === 29);
+        let tithiName = isAmavasya ? "Amavasya (New Moon)" : tithis[tithiIndex];
+        document.getElementById('tithi-details').innerText = `${tithiIndex < 15 && !isAmavasya ? "Shukla" : (isAmavasya ? "" : "Krishna")} ${tithiName} Tithi`;
 
         // --- 3. Chetavani ---
         if (gandaMoola.includes(nakIndex)) warnings.push(`Moon in Ganda Moola: Highly volatile sentiment.`);
@@ -263,45 +266,70 @@
         let chetavaniBox = document.getElementById('chetavani-text');
         chetavaniBox.innerHTML = warnings.length > 0 ? `<ul><li>${warnings.join('</li><li>')}</li></ul>` : "No extreme astrological friction detected. Trade standard price action.";
 
-        // --- 4. The 24-Hour Timeline Engine ---
+        // --- 4. The Deep Timeline Engine (15-Minute High Precision Scan) ---
         let dayEvents = [];
         let startOfDay = new Date(dateStr + "T00:00:00+05:30");
         
-        // Loop through all 24 hours of the day to catch EVERYTHING
-        for (let i = 0; i < 24; i++) {
-            let t1 = new Date(startOfDay.getTime() + i * 3600000);
-            let t2 = new Date(startOfDay.getTime() + (i + 1) * 3600000);
+        // Loop 96 times (every 15 minutes) for deep accuracy
+        for (let i = 0; i < 96; i++) {
+            let t1 = new Date(startOfDay.getTime() + i * 900000);
+            let t2 = new Date(startOfDay.getTime() + (i + 1) * 900000);
             let pl1 = AstroEngine.getAllPlanets(t1);
             let pl2 = AstroEngine.getAllPlanets(t2);
 
             let moon1 = pl1[1].deg, moon2 = pl2[1].deg;
             if (moon1 > moon2) moon2 += 360;
 
-            // A. Pada Shifts
-            let p1 = Math.floor(moon1 / 3.333333), p2 = Math.floor(moon2 / 3.333333);
-            if (p1 !== p2) {
-                let frac = ((p2 * 3.333333) - moon1) / (moon2 - moon1);
-                dayEvents.push({ mins: (i * 60) + Math.floor(frac * 60), type: "important", html: "<strong>IMPORTANT TIME · PADA SHIFT</strong><span class='sub-text'>Watch price action at your levels</span>" });
-            }
-
-            // B. Nakshatra Shifts
             let n1 = Math.floor(moon1 / 13.333333), n2 = Math.floor(moon2 / 13.333333);
+            let p1 = Math.floor(moon1 / 3.333333), p2 = Math.floor(moon2 / 3.333333);
+
+            // A. Nakshatra Shifts (Overrides Pada shift)
             if (n1 !== n2) {
                 let frac = ((n2 * 13.333333) - moon1) / (moon2 - moon1);
-                dayEvents.push({ mins: (i * 60) + Math.floor(frac * 60), type: "ingress", html: `Moon enters <strong>${nakshatras[n2]}</strong> nakshatra` });
+                dayEvents.push({ 
+                    mins: (i * 15) + Math.floor(frac * 15), 
+                    type: "ingress", 
+                    html: `Moon enters <strong>${nakshatras[n2]}</strong> nakshatra <span class='sub-text'>Enters Pada 1</span>` 
+                });
+            } 
+            // B. Pada Shifts (If no Nakshatra shift)
+            else if (p1 !== p2) {
+                let frac = ((p2 * 3.333333) - moon1) / (moon2 - moon1);
+                let nextPada = (p2 % 4) + 1;
+                
+                // Format exactly like the mockup: "IMPORTANT TIME · 10:25 AM"
+                let totalMins = (i * 15) + Math.floor(frac * 15);
+                let h = Math.floor(totalMins / 60);
+                let m = totalMins % 60;
+                let ampm = h >= 12 ? 'PM' : 'AM';
+                let h12 = h % 12 || 12;
+                let timeStr = `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+
+                dayEvents.push({ 
+                    mins: totalMins, 
+                    type: "important", 
+                    html: `<strong>IMPORTANT TIME · ${timeStr}</strong><span class='sub-text'>Watch price action as Moon enters Pada ${nextPada}</span>` 
+                });
             }
 
             // C. All Planet Sign Changes (Sankranti/Ingress)
             pl1.forEach((p, idx) => {
                 let s1 = Math.floor(p.deg / 30), s2 = Math.floor(pl2[idx].deg / 30);
-                if (s1 !== s2 && Math.abs(p.deg - pl2[idx].deg) < 10) { // Avoid false positive on 360 wrap
+                if (s1 !== s2 && Math.abs(p.deg - pl2[idx].deg) < 10) { 
                     let frac = ((s2 * 30) - p.deg) / (pl2[idx].deg - p.deg);
-                    dayEvents.push({ mins: (i * 60) + Math.floor(frac * 60), type: "ingress", html: `${p.name} enters <strong>${zodiac[s2]}</strong>` });
+                    if (frac < 0) frac += 1;
+                    let sankrantiText = p.name === "Sun" ? ` — ${zodiac[s2]} Sankranti` : "";
+                    
+                    dayEvents.push({ 
+                        mins: (i * 15) + Math.floor(frac * 15), 
+                        type: "ingress", 
+                        html: `${p.name} enters <strong>${zodiac[s2]}</strong><span class='sub-text'>Sign Change${sankrantiText}</span>` 
+                    });
                 }
             });
 
-            // D. Cross-Planet Aspects (0, 90, 120, 135, 180)
-            let fast = [0, 1, 2, 3, 4]; // Sun, Moon, Merc, Ven, Mars
+            // D. Cross-Planet Aspects (Including Sun-Moon Conjunctions and 135 degrees)
+            let fast = [0, 1, 2, 3, 4]; 
             let angles = [0, 90, 120, 135, 180];
             
             fast.forEach(f => {
@@ -310,14 +338,17 @@
                     let rel2 = AstroEngine.norm(pl2[f].deg - pl2[s].deg);
                     
                     angles.forEach(ang => {
-                        // Check if relative angle crosses the target during this hour
                         let crossed = false;
                         if (ang === 0 && rel1 > 350 && rel2 < 10) crossed = true;
                         else if (rel1 <= ang && rel2 > ang && Math.abs(rel1 - rel2) < 5) crossed = true;
                         
                         if (crossed) {
-                            let effect = ang === 0 && f === 0 && s === 1 ? "Amavasya / New Moon" : "(exact)";
-                            dayEvents.push({ mins: (i * 60) + 30, type: "aspect", html: `${pl1[f].name} <strong>${ang}°</strong> ${pl1[s].name} <span class='sub-text'>${effect}</span>` });
+                            let effect = (ang === 0 && f === 0 && s === 1) ? "— Amavasya / New Moon" : "(exact)";
+                            dayEvents.push({ 
+                                mins: (i * 15) + 7, 
+                                type: "aspect", 
+                                html: `${pl1[f].name} <strong>${ang === 0 ? "Conjunction" : ang + "°"}</strong> ${pl1[s].name} <span class='sub-text'>${effect}</span>` 
+                            });
                         }
                     });
                 }
@@ -339,7 +370,6 @@
             let m = evt.mins % 60;
             let timeClass = "";
             
-            // Determine if pre/post market for styling
             if (evt.mins < (9 * 60) + 15) timeClass = "pre-market";
             else if (evt.mins > (15 * 60) + 30) timeClass = "post-market";
             
